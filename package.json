@@ -24,5 +24,11 @@
   "bugs": {
     "url": "https://github.com/abrilchan/CDMX013-md-links/issues"
   },
-  "homepage": "https://github.com/abrilchan/CDMX013-md-links#readme"
+  "homepage": "https://github.com/abrilchan/CDMX013-md-links#readme",
+  "dependencies": {
+    "@types/marked": "^4.0.7",
+    "axios": "^1.1.3",
+    "cheerio": "^1.0.0-rc.12",
+    "marked": "^4.2.2"
+  }
 }

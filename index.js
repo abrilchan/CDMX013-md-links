@@ -1,36 +1,74 @@
-
-//const process = require('path');
-const folderPath = '/home/abrilcg/test-mdlinks';
-//const filePath = '/home/abrilcg/test-mdlinks/untitled.txt';
-//const readingfilepath = require('/home/abrilcg/test-mdlinks/untitled.txt');
-//console.log(readingfilepath, 'file path: '+ filePath, 'file type: '+process.extname(filePath));
-//console.log( 'folder path: '+ folderPath, 'folder type: '+process.extname(folderPath));
-
-const path = require('path');
 const fs = require('fs');
-//joining path of directory 
-//const directoryPath = path.join(__dirname, 'Documents');
-//passsing directoryPath and callback function
-fs.readdir(folderPath, function (err, files) {
-    if (err) {
-        return console.log('Unable to scan directory: ' + err);
-    } 
-    files.forEach(function (file) {
-        if(path.extname(file)=='.md')
-       // {console.log(file); 
-           { fs.readFile(file, 'utf8', (err, data) => {
-                if (err) {
-                  console.error(err);
-                  return;
-                }
-               // console.log(data);
-               let dataArray = data.split(' ');
-                dataArray.forEach(line => 
-                    {let regExTest = /https:\/\/[a-zA-Z\.\/]+/gm.test(line);
-                    if (regExTest){
-                    console.log('link: '+ line)}})
-              });
-            }     
-    });
-});
+const path = require('path');
+const {marked} = require('marked');
+const cheerio = require('cheerio');
+const readDirectory = require('./direct');
+const readFile = require('./file');
+const validateLinks = require('./validate');
 
+
+const folderPath = '/home/abrilcg/CDMX013-md-links/';
+let links = [];
+
+         
+function mdLinks(folderPath, validate){
+    return new Promise((resolve, reject) => {
+
+        if(path.isAbsolute(folderPath) === false){
+            absolutePath = path.resolve(folderPath);
+         } else {
+             absolutePath = folderPath;
+         }
+         let fileReturned = [];
+         if (fs.lstatSync(absolutePath).isDirectory()){
+            readDirectory(absolutePath, fileReturned);
+        } else {
+          readFile(absolutePath, fileReturned);
+        };
+
+        let links = [];
+        let linkObj = {};
+    
+        fileReturned.forEach((file) => {
+        const data = fs.readFileSync(file, 'utf8');
+        const html = marked.parse(data);
+        const $ = cheerio.load(html);
+        $('a').each((i, element) => {
+            const link = $(element).attr('href');
+            const txt = $(element).text().length < 50 ? $(element).text() : $(element).text().slice(0,50);
+            linkObj = {
+                path: file,
+                href: link,
+                text: txt
+            }
+            links.push(linkObj);
+            });})
+        
+        if(!validate){
+            resolve(links);
+        } 
+        else {
+            const httpResponse = links.map((link) => validateLinks(link));
+            resolve(Promise.all(httpResponse));
+        };
+    });
+};
+
+mdLinks('/home/abrilcg/CDMX013-md-links/readdd', true)
+.then((result) => {
+    if(result.length === 0) {
+      console.log('no hay links');}
+    else if (true) { 
+        console.log('\nLinks in md file:');
+        result.forEach((link) => {
+          console.log(`\n${'file:'} ${link.path}\n${'href:'} ${link.href}\n${'text:'} ${link.text}\n`);
+          if(link.statusText === 'fail'){
+            console.log(`${'status:'} ${link.status} \n${'message:'} ${link.statusText}`);
+          } else {
+            console.log(`${'status:'} ${link.status} \n${'message:'} ${link.statusText}\n`);
+          }
+        });}
+        })
+.catch((error) => {
+    console.log(`${'Error'} ${error.message}`);
+         });
